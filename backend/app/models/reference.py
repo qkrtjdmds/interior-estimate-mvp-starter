@@ -1,7 +1,7 @@
 ﻿from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -34,6 +34,10 @@ class Category(TimestampMixin, VisibilityMixin, Base):
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     description: Mapped[str | None] = mapped_column(Text)
 
+    __table_args__ = (
+        Index("uq_categories_normalized_name", func.lower(func.btrim(name)), unique=True).ddl_if(dialect="postgresql"),
+    )
+
     items: Mapped[list["Item"]] = relationship(
         back_populates="category",
         cascade="all, delete-orphan",
@@ -47,6 +51,12 @@ class Item(TimestampMixin, VisibilityMixin, Base):
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        Index("uq_items_category_normalized_name", category_id, func.lower(func.btrim(name)), unique=True).ddl_if(
+            dialect="postgresql"
+        ),
+    )
 
     category: Mapped[Category] = relationship(back_populates="items")
     options: Mapped[list["Option"]] = relationship(
@@ -66,4 +76,11 @@ class Option(TimestampMixin, VisibilityMixin, Base):
     default_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     recommended: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    __table_args__ = (
+        Index("uq_options_item_normalized_name", item_id, func.lower(func.btrim(name)), unique=True).ddl_if(
+            dialect="postgresql"
+        ),
+    )
+
     item: Mapped[Item] = relationship(back_populates="options")
+    estimate_items: Mapped[list["EstimateItem"]] = relationship(back_populates="option")
