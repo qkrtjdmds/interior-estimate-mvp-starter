@@ -1,10 +1,10 @@
-﻿from datetime import date, datetime
+from datetime import date, datetime
 from decimal import Decimal
 import re
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-ALLOWED_ESTIMATE_STATUSES = {"draft", "submitted", "confirmed", "cancelled"}
+ALLOWED_ESTIMATE_STATUSES = {"draft", "submitted", "confirmed", "completed", "cancelled"}
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 

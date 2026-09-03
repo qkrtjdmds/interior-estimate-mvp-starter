@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import secrets
 
@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models import Estimate, EstimateShare
 
-SHAREABLE_STATUSES = {"submitted", "confirmed"}
-PUBLIC_READABLE_STATUSES = {"submitted", "confirmed"}
+SHAREABLE_STATUSES = {"submitted", "confirmed", "completed"}
+PUBLIC_READABLE_STATUSES = {"submitted", "confirmed", "completed"}
 
 
 def generate_share_token() -> str:

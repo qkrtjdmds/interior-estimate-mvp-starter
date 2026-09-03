@@ -617,3 +617,20 @@ def test_create_estimate_accepts_questionnaire_fields() -> None:
         json={"customer_name": "Alice", "customer_email": "bad-email", "items": [{"option_id": option_id, "quantity": "1.00"}]},
     )
     assert invalid_email.status_code == 422
+
+
+def test_completed_status_transition_from_confirmed() -> None:
+    option_id = create_option("Completed Status", "100.00")
+    created = client.post(
+        "/api/estimates",
+        json={"customer_name": "Alice", "items": [{"option_id": option_id, "quantity": "1.00"}]},
+    ).json()
+    estimate_id = created["id"]
+
+    assert client.patch(f"/api/estimates/{estimate_id}", json={"status": "completed"}).status_code == 409
+    assert client.patch(f"/api/estimates/{estimate_id}", json={"status": "submitted"}).status_code == 200
+    assert client.patch(f"/api/estimates/{estimate_id}", json={"status": "confirmed"}).status_code == 200
+    completed = client.patch(f"/api/estimates/{estimate_id}", json={"status": "completed"})
+    assert completed.status_code == 200
+    assert completed.json()["status"] == "completed"
+    assert client.patch(f"/api/estimates/{estimate_id}", json={"status": "draft"}).status_code == 409

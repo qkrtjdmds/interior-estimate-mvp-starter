@@ -30,7 +30,8 @@ DbSession = Annotated[Session, Depends(get_db)]
 ALLOWED_STATUS_TRANSITIONS = {
     "draft": {"draft", "submitted", "cancelled"},
     "submitted": {"submitted", "draft", "confirmed", "cancelled"},
-    "confirmed": {"confirmed", "cancelled"},
+    "confirmed": {"confirmed", "completed", "cancelled"},
+    "completed": {"completed", "cancelled"},
     "cancelled": {"cancelled"},
 }
 BASIC_UPDATE_FIELDS = {"customer_name", "customer_phone", "customer_email", "housing_type", "floor_area_pyeong", "renovation_scope", "preferred_timeline", "project_address", "notes", "valid_until"}
