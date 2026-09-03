@@ -1212,3 +1212,262 @@ select {
     grid-template-columns: 1fr;
   }
 }
+.admin-sidebar nav a.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.admin-catalog-content {
+  padding-bottom: 48px;
+}
+
+.admin-catalog-note {
+  border: 1px solid #d8d1c2;
+  background: #fffaf1;
+  color: #5c4a2f;
+  padding: 14px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.admin-success {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #bad2bf;
+  border-radius: 8px;
+  background: #f0f8f1;
+  color: #245538;
+  font-weight: 700;
+}
+
+.admin-catalog-grid {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.9fr) minmax(260px, 1fr) minmax(300px, 1.2fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.admin-catalog-section {
+  border: 1px solid #ddd7ca;
+  border-radius: 8px;
+  background: #fffdf8;
+  min-width: 0;
+}
+
+.admin-catalog-section > header {
+  padding: 16px;
+  border-bottom: 1px solid #e7e0d3;
+  display: grid;
+  gap: 12px;
+}
+
+.admin-catalog-section h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #263b2e;
+}
+
+.admin-catalog-section p {
+  margin: 4px 0 0;
+  color: #746a5c;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.catalog-admin-list {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.catalog-empty {
+  color: #746a5c;
+  background: #f7f3ea;
+  border-radius: 8px;
+  padding: 18px;
+  text-align: center;
+}
+
+.catalog-admin-row {
+  border: 1px solid #e3ddcf;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.catalog-admin-row.selected {
+  border-color: #315c45;
+  box-shadow: 0 0 0 2px rgba(49, 92, 69, 0.14);
+}
+
+.catalog-admin-row.inactive {
+  background: #f4f1eb;
+  color: #777;
+}
+
+.catalog-row-main {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 14px;
+  display: grid;
+  gap: 5px;
+  cursor: pointer;
+  color: inherit;
+}
+
+.catalog-row-main span {
+  font-weight: 800;
+  color: #25392e;
+}
+
+.catalog-admin-row.inactive .catalog-row-main span {
+  color: #777;
+}
+
+.catalog-row-main strong,
+.catalog-row-main em {
+  font-size: 0.88rem;
+  font-style: normal;
+  color: #6c6255;
+}
+
+.option-row-main strong {
+  color: #315c45;
+}
+
+.catalog-row-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid #ece6da;
+}
+
+.catalog-row-actions button {
+  min-height: 36px;
+  border: 0;
+  border-right: 1px solid #ece6da;
+  background: #fbf8f1;
+  color: #3d5145;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.catalog-row-actions button:last-child {
+  border-right: 0;
+}
+
+.catalog-row-actions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.catalog-editor {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(460px, 100%);
+  background: #fffdf8;
+  border-left: 1px solid #d8d1c2;
+  box-shadow: -8px 0 24px rgba(31, 45, 37, 0.16);
+  z-index: 30;
+  overflow-y: auto;
+}
+
+.catalog-editor form {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+}
+
+.catalog-editor header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.catalog-editor header span {
+  color: #746a5c;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.catalog-editor h2 {
+  margin: 4px 0 0;
+  color: #243b2d;
+}
+
+.admin-close-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid #d8d1c2;
+  background: #fff;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.catalog-form-grid {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.catalog-editor label {
+  display: grid;
+  gap: 7px;
+  color: #324338;
+  font-weight: 700;
+}
+
+.catalog-editor input,
+.catalog-editor textarea,
+.catalog-editor select {
+  width: 100%;
+  border: 1px solid #cfc7b8;
+  border-radius: 8px;
+  padding: 11px 12px;
+  font: inherit;
+  background: #fff;
+  color: #1f2d25;
+}
+
+.catalog-editor textarea {
+  resize: vertical;
+}
+
+.catalog-editor .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.catalog-editor .checkbox-label input {
+  width: auto;
+}
+
+.catalog-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+@media (max-width: 1120px) {
+  .admin-catalog-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .catalog-row-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .catalog-editor {
+    width: 100%;
+    border-left: 0;
+  }
+}

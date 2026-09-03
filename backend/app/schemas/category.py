@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -13,9 +13,10 @@ class CategoryBase(BaseModel):
     @field_validator("name")
     @classmethod
     def name_must_not_be_blank(cls, value: str) -> str:
-        if not value.strip():
+        stripped = value.strip()
+        if not stripped:
             raise ValueError("name must not be blank")
-        return value
+        return stripped
 
 
 class CategoryCreate(CategoryBase):
@@ -32,9 +33,12 @@ class CategoryUpdate(BaseModel):
     @field_validator("name")
     @classmethod
     def name_must_not_be_blank(cls, value: str | None) -> str | None:
-        if value is not None and not value.strip():
+        if value is None:
+            return value
+        stripped = value.strip()
+        if not stripped:
             raise ValueError("name must not be blank")
-        return value
+        return stripped
 
 
 class CategoryResponse(CategoryBase):

@@ -1,7 +1,8 @@
-﻿import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { AdminLayout, ProtectedAdminRoute } from './components/AdminLayout'
 import { AdminAuthProvider } from './context/AdminAuthContext'
 import { EstimateDraftProvider } from './context/EstimateDraftContext'
+import AdminCatalogPage from './pages/AdminCatalogPage'
 import AdminEstimateDetailPage from './pages/AdminEstimateDetailPage'
 import AdminEstimateListPage from './pages/AdminEstimateListPage'
 import AdminLoginPage from './pages/AdminLoginPage'
@@ -30,6 +31,7 @@ export default function App() {
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Navigate to="/admin/estimates" replace />} />
               <Route path="estimates" element={<AdminEstimateListPage />} />
+              <Route path="catalog" element={<AdminCatalogPage />} />
               <Route path="estimates/:estimateId" element={<AdminEstimateDetailPage />} />
             </Route>
           </Route>

@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -18,9 +18,10 @@ class OptionBase(BaseModel):
     @field_validator("name", "unit")
     @classmethod
     def text_must_not_be_blank(cls, value: str) -> str:
-        if not value.strip():
+        stripped = value.strip()
+        if not stripped:
             raise ValueError("value must not be blank")
-        return value
+        return stripped
 
 
 class OptionCreate(OptionBase):
@@ -41,9 +42,12 @@ class OptionUpdate(BaseModel):
     @field_validator("name", "unit")
     @classmethod
     def text_must_not_be_blank(cls, value: str | None) -> str | None:
-        if value is not None and not value.strip():
+        if value is None:
+            return value
+        stripped = value.strip()
+        if not stripped:
             raise ValueError("value must not be blank")
-        return value
+        return stripped
 
 
 class OptionResponse(OptionBase):

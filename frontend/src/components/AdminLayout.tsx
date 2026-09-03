@@ -1,4 +1,4 @@
-﻿import { Link, Navigate, Outlet, useLocation } from 'react-router-dom'
+﻿import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import { useAdminAuth } from '../context/AdminAuthContext'
 
@@ -26,7 +26,8 @@ export function AdminLayout() {
       <aside className={open ? 'admin-sidebar open' : 'admin-sidebar'}>
         <div className="admin-brand">Interior Admin</div>
         <nav aria-label="관리자 메뉴">
-          <Link to="/admin/estimates" onClick={() => setOpen(false)}>견적 관리</Link>
+          <NavLink to="/admin/estimates" onClick={() => setOpen(false)}>견적 관리</NavLink>
+          <NavLink to="/admin/catalog" onClick={() => setOpen(false)}>카탈로그 관리</NavLink>
         </nav>
         <div className="admin-user">
           <span>관리자</span>
@@ -38,7 +39,7 @@ export function AdminLayout() {
       <div className="admin-main">
         <header className="admin-topbar">
           <button className="admin-menu-button" type="button" onClick={() => setOpen((value) => !value)} aria-expanded={open}>메뉴</button>
-          <span>견적 관리</span>
+          <span>관리자</span>
         </header>
         <Outlet />
       </div>

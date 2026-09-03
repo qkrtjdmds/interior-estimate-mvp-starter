@@ -82,6 +82,7 @@ export default function EstimateWizardPage() {
     customer,
     project,
     selectedItemIds,
+    setSelectedItemIds,
     selectedItems,
     setCustomer,
     setProject,
@@ -94,6 +95,7 @@ export default function EstimateWizardPage() {
   const [catalog, setCatalog] = useState<CatalogCategory[]>([])
   const [catalogLoading, setCatalogLoading] = useState(false)
   const [catalogError, setCatalogError] = useState<string | null>(null)
+  const [catalogSyncNotice, setCatalogSyncNotice] = useState<string | null>(null)
   const [preview, setPreview] = useState<EstimatePreview | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
@@ -123,7 +125,21 @@ export default function EstimateWizardPage() {
     }
   }, [step.key])
 
-  useEffect(() => {
+    useEffect(() => {
+    if (catalog.length === 0) return
+    const availableItemIds = new Set(catalog.flatMap((category) => category.items.map((item) => item.id)))
+    const availableOptionIds = new Set(catalog.flatMap((category) => category.items.flatMap((item) => item.options.map((option) => option.id))))
+    const validItemIds = selectedItemIds.filter((itemId) => availableItemIds.has(itemId))
+    const removedItemCount = selectedItemIds.length - validItemIds.length
+    const invalidOptionIds = selectedItems.filter((item) => !availableOptionIds.has(item.option_id)).map((item) => item.option_id)
+
+    if (removedItemCount > 0) setSelectedItemIds(validItemIds)
+    invalidOptionIds.forEach((optionId) => removeItem(optionId))
+    if (removedItemCount > 0 || invalidOptionIds.length > 0) {
+      setCatalogSyncNotice('현재 카탈로그에서 사용할 수 없는 저장 항목을 제거했습니다. 옵션을 다시 확인해 주세요.')
+    }
+  }, [catalog, removeItem, selectedItemIds, selectedItems, setSelectedItemIds])
+useEffect(() => {
     if (debouncedItems.length === 0) {
       setPreview(null)
       setPreviewError(null)
@@ -274,6 +290,7 @@ export default function EstimateWizardPage() {
           <section className="step-section">
             {catalogLoading && <ApiState title="카탈로그를 불러오는 중" message="등록된 기준정보를 확인하고 있습니다." />}
             {catalogError && <ApiState title="카탈로그 조회 실패" message={catalogError} />}
+            {catalogSyncNotice && <p className="notice" role="status">{catalogSyncNotice}</p>}
             {!catalogLoading && !catalogError && catalog.length === 0 && <ApiState title="등록된 기준정보가 없습니다" message="관리자가 기준정보를 등록해야 견적을 시작할 수 있습니다." />}
             <div className="consult-category-grid">
               {catalogItems.map(({ category, item }) => {
@@ -293,6 +310,7 @@ export default function EstimateWizardPage() {
 
         {step.key === 'options' && (
           <section className="step-section">
+            {catalogSyncNotice && <p className="notice" role="status">{catalogSyncNotice}</p>}
             {selectedCatalogItems.length === 0 ? <ApiState title="선택한 시공 항목이 없습니다" message="이전 단계에서 시공 항목을 먼저 선택해 주세요." /> : null}
             {selectedCatalogItems.map(({ category, item }, index) => (
               <article className="option-question" key={item.id}>

@@ -146,3 +146,21 @@ def test_validation_errors() -> None:
         json={"item_id": 1, "name": "Bad", "unit": "m", "default_price": "-1.00"},
     ).status_code == 422
 
+
+
+def test_reference_names_and_unit_are_trimmed() -> None:
+    category = client.post("/api/categories", json={"name": "  Trim Category  "})
+    assert category.status_code == 201
+    assert category.json()["name"] == "Trim Category"
+
+    item = client.post("/api/items", json={"category_id": category.json()["id"], "name": "  Trim Item  "})
+    assert item.status_code == 201
+    assert item.json()["name"] == "Trim Item"
+
+    option = client.post(
+        "/api/options",
+        json={"item_id": item.json()["id"], "name": "  Trim Option  ", "unit": "  평  ", "default_price": "1000.00"},
+    )
+    assert option.status_code == 201
+    assert option.json()["name"] == "Trim Option"
+    assert option.json()["unit"] == "평"
