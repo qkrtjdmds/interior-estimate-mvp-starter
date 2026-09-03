@@ -10,10 +10,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.api.dependencies import get_current_admin
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
-from app.models import Category, Item, Option  # noqa: F401
+from app.models import AdminUser, Category, Item, Option  # noqa: F401
 
 engine = create_engine(
     "sqlite+pysqlite:///:memory:",
@@ -21,6 +22,10 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+
+def override_get_current_admin() -> object:
+    return object()
 
 
 def override_get_db() -> Generator[Session, None, None]:
@@ -31,12 +36,13 @@ def override_get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 
 def setup_function() -> None:
+    app.dependency_overrides.clear()
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_admin] = override_get_current_admin
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
@@ -139,3 +145,4 @@ def test_validation_errors() -> None:
         "/api/options",
         json={"item_id": 1, "name": "Bad", "unit": "m", "default_price": "-1.00"},
     ).status_code == 422
+

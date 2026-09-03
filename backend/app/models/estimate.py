@@ -44,6 +44,11 @@ class Estimate(Base):
         Index("ix_estimates_estimate_number", "estimate_number"),
     )
 
+    shares: Mapped[list["EstimateShare"]] = relationship(
+        back_populates="estimate",
+        cascade="all, delete-orphan",
+    )
+
     items: Mapped[list["EstimateItem"]] = relationship(
         back_populates="estimate",
         cascade="all, delete-orphan",

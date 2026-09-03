@@ -39,6 +39,8 @@ pgdata/
 postgres-data/
 *.sqlite
 *.sqlite3
+*.tmp.pdf
+*.pdf.tmp
 .tmp/
 tmp/
 temp/

@@ -4,25 +4,20 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.api.dependencies import get_current_admin
 from app.crud import item as item_crud
 from app.db.session import get_db
 from app.schemas.item import ItemCreate, ItemResponse, ItemUpdate
 
-router = APIRouter(prefix="/api/items", tags=["items"])
+router = APIRouter(prefix="/api/items", tags=["items"], dependencies=[Depends(get_current_admin)])
 DbSession = Annotated[Session, Depends(get_db)]
 
 
 def _handle_db_error(db: Session, exc: SQLAlchemyError) -> None:
     db.rollback()
     if isinstance(exc, IntegrityError):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Database constraint violation",
-        ) from exc
-    raise HTTPException(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        detail="Database operation failed",
-    ) from exc
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Database constraint violation") from exc
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database operation failed") from exc
 
 
 @router.post("", response_model=ItemResponse, status_code=status.HTTP_201_CREATED, summary="Create item")
@@ -45,15 +40,7 @@ def list_items(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=100),
 ) -> list[ItemResponse]:
-    return item_crud.get_items(
-        db,
-        category_id=category_id,
-        active=active,
-        customer_visible=customer_visible,
-        name=name,
-        skip=skip,
-        limit=limit,
-    )
+    return item_crud.get_items(db, category_id=category_id, active=active, customer_visible=customer_visible, name=name, skip=skip, limit=limit)
 
 
 @router.get("/{item_id}", response_model=ItemResponse, summary="Get item")
@@ -83,10 +70,7 @@ def delete_item(item_id: int, db: DbSession) -> Response:
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item not found")
     if item_crud.item_has_options(db, item_id):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Item has options and cannot be deleted",
-        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Item has options and cannot be deleted")
     try:
         item_crud.delete_item(db, item)
     except SQLAlchemyError as exc:

@@ -3,7 +3,7 @@
 from alembic.config import Config
 
 from app.db.base import Base
-from app.models import Category, Item, Option  # noqa: F401
+from app.models import AdminUser, Category, Estimate, EstimateItem, EstimateShare, Item, Option  # noqa: F401
 
 
 def test_metadata_contains_reference_tables() -> None:
@@ -48,3 +48,25 @@ def test_estimate_constraints_migration_file_defines_revision() -> None:
     assert "ck_estimates_subtotal_non_negative" in migration
     assert "uq_estimate_items_estimate_option" in migration
     assert "option_id IS NOT NULL" in migration
+
+
+def test_admin_users_migration_file_defines_revision() -> None:
+    migration = (Path("alembic/versions") / "0005_admin_users.py").read_text(encoding="ascii")
+
+    assert "0005_admin_users" in migration
+    assert "0004_estimate_constraints" in migration
+    assert "admin_users" in migration
+    assert "password_hash" in migration
+    assert "uq_admin_users_normalized_email" in migration
+    assert "lower(btrim(email))" in migration
+
+
+def test_estimate_shares_migration_file_defines_revision() -> None:
+    migration = (Path("alembic/versions") / "0006_estimate_shares.py").read_text(encoding="ascii")
+
+    assert "0006_estimate_shares" in migration
+    assert "0005_admin_users" in migration
+    assert "estimate_shares" in migration
+    assert "token_hash" in migration
+    assert "uq_estimate_shares_active_estimate" in migration
+    assert "active IS TRUE" in migration

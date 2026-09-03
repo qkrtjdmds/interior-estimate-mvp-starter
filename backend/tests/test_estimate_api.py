@@ -9,11 +9,12 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.api.dependencies import get_current_admin
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 from app.crud import estimate as estimate_crud
-from app.models import Category, Estimate, EstimateItem, Item, Option  # noqa: F401
+from app.models import AdminUser, Category, Estimate, EstimateItem, Item, Option  # noqa: F401
 
 engine = create_engine(
     "sqlite+pysqlite:///:memory:",
@@ -22,6 +23,10 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 client = TestClient(app)
+
+
+def override_get_current_admin() -> object:
+    return object()
 
 
 def override_get_db() -> Generator[Session, None, None]:
@@ -33,17 +38,38 @@ def override_get_db() -> Generator[Session, None, None]:
 
 
 def setup_function() -> None:
+    app.dependency_overrides.clear()
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_admin] = override_get_current_admin
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
 
-def create_option(name: str, price: str, *, active: bool = True) -> int:
+def create_option(
+    name: str,
+    price: str,
+    *,
+    active: bool = True,
+    customer_visible: bool = True,
+    item_active: bool = True,
+    item_customer_visible: bool = True,
+    category_active: bool = True,
+    category_customer_visible: bool = True,
+) -> int:
     with TestingSessionLocal() as db:
-        category = Category(name=f"Category {name}")
+        category = Category(
+            name=f"Category {name}",
+            active=category_active,
+            customer_visible=category_customer_visible,
+        )
         db.add(category)
         db.flush()
-        item = Item(category_id=category.id, name=f"Item {name}")
+        item = Item(
+            category_id=category.id,
+            name=f"Item {name}",
+            active=item_active,
+            customer_visible=item_customer_visible,
+        )
         db.add(item)
         db.flush()
         option = Option(
@@ -53,6 +79,7 @@ def create_option(name: str, price: str, *, active: bool = True) -> int:
             unit="m",
             default_price=Decimal(price),
             active=active,
+            customer_visible=customer_visible,
         )
         db.add(option)
         db.commit()
@@ -421,3 +448,136 @@ def test_submit_recalculates_totals() -> None:
     assert Decimal(str(body["subtotal"])) == Decimal("200.00")
     assert Decimal(str(body["vat_amount"])) == Decimal("20.00")
     assert Decimal(str(body["total_amount"])) == Decimal("220.00")
+
+
+def test_preview_calculates_totals_without_saving_estimate() -> None:
+    option_a = create_option("Preview A", "10.005")
+    option_b = create_option("Preview B", "20.00")
+
+    response = client.post(
+        "/api/estimates/preview",
+        json={
+            "items": [
+                {"option_id": option_a, "quantity": "1.00", "sort_order": 2},
+                {"option_id": option_b, "quantity": "2.00", "sort_order": 1},
+            ]
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [item["option_id"] for item in body["items"]] == [option_b, option_a]
+    assert Decimal(str(body["subtotal"])) == Decimal("50.01")
+    assert Decimal(str(body["vat_amount"])) == Decimal("5.00")
+    assert Decimal(str(body["total_amount"])) == Decimal("55.01")
+
+    with TestingSessionLocal() as db:
+        assert db.scalars(select(Estimate)).all() == []
+        assert db.scalars(select(EstimateItem)).all() == []
+
+
+def test_preview_and_create_totals_match() -> None:
+    option_id = create_option("Preview Create Match", "123.45")
+    payload = {"items": [{"option_id": option_id, "quantity": "2.50"}]}
+
+    preview = client.post("/api/estimates/preview", json=payload)
+    created = client.post("/api/estimates", json={"customer_name": "Alice", **payload})
+
+    assert preview.status_code == 200
+    assert created.status_code == 201
+    preview_body = preview.json()
+    created_body = created.json()
+    assert Decimal(str(preview_body["subtotal"])) == Decimal(str(created_body["subtotal"]))
+    assert Decimal(str(preview_body["vat_amount"])) == Decimal(str(created_body["vat_amount"]))
+    assert Decimal(str(preview_body["total_amount"])) == Decimal(str(created_body["total_amount"]))
+    assert Decimal(str(preview_body["items"][0]["unit_price"])) == Decimal(str(created_body["items"][0]["unit_price_snapshot"]))
+
+
+def test_preview_validation_and_visibility_errors() -> None:
+    active_option_id = create_option("Preview Active", "100.00")
+    hidden_option_id = create_option("Preview Hidden Option", "100.00", customer_visible=False)
+    inactive_item_option_id = create_option("Preview Inactive Item", "100.00", item_active=False)
+    hidden_category_option_id = create_option("Preview Hidden Category", "100.00", category_customer_visible=False)
+
+    assert client.post("/api/estimates/preview", json={"items": []}).status_code == 422
+    assert client.post(
+        "/api/estimates/preview",
+        json={"items": [{"option_id": active_option_id, "quantity": "0"}]},
+    ).status_code == 422
+    assert client.post(
+        "/api/estimates/preview",
+        json={"items": [{"option_id": 999, "quantity": "1"}]},
+    ).status_code == 404
+    assert client.post(
+        "/api/estimates/preview",
+        json={"items": [{"option_id": hidden_option_id, "quantity": "1"}]},
+    ).status_code == 409
+    assert client.post(
+        "/api/estimates/preview",
+        json={"items": [{"option_id": inactive_item_option_id, "quantity": "1"}]},
+    ).status_code == 409
+    assert client.post(
+        "/api/estimates/preview",
+        json={"items": [{"option_id": hidden_category_option_id, "quantity": "1"}]},
+    ).status_code == 409
+
+
+def test_create_estimate_requires_visible_active_parent_chain() -> None:
+    hidden_option_id = create_option("Create Hidden", "100.00", customer_visible=False)
+    inactive_category_option_id = create_option("Create Inactive Category", "100.00", category_active=False)
+    hidden_item_option_id = create_option("Create Hidden Item", "100.00", item_customer_visible=False)
+
+    for option_id in [hidden_option_id, inactive_category_option_id, hidden_item_option_id]:
+        response = client.post(
+            "/api/estimates",
+            json={"customer_name": "Alice", "items": [{"option_id": option_id, "quantity": "1"}]},
+        )
+        assert response.status_code == 409
+
+
+def test_replace_existing_draft_item_can_use_snapshot_after_reference_hidden() -> None:
+    option_id = create_option("Draft Snapshot Hidden", "100.00")
+    created = client.post(
+        "/api/estimates",
+        json={"customer_name": "Alice", "items": [{"option_id": option_id, "quantity": "1.00"}]},
+    ).json()
+
+    with TestingSessionLocal() as db:
+        option = db.get(Option, option_id)
+        option.active = False
+        option.customer_visible = False
+        option.default_price = Decimal("999.00")
+        db.commit()
+
+    replaced = client.put(
+        f"/api/estimates/{created['id']}/items",
+        json={"items": [{"option_id": option_id, "quantity": "3.00"}]},
+    )
+
+    assert replaced.status_code == 200
+    item = replaced.json()["items"][0]
+    assert Decimal(str(item["unit_price_snapshot"])) == Decimal("100.00")
+    assert Decimal(str(item["line_total"])) == Decimal("300.00")
+
+
+def test_replace_new_hidden_option_is_rejected_even_when_existing_snapshot_allowed() -> None:
+    existing_option_id = create_option("Existing Visible", "100.00")
+    hidden_option_id = create_option("New Hidden", "50.00", customer_visible=False)
+    created = client.post(
+        "/api/estimates",
+        json={"customer_name": "Alice", "items": [{"option_id": existing_option_id, "quantity": "1.00"}]},
+    ).json()
+
+    response = client.put(
+        f"/api/estimates/{created['id']}/items",
+        json={
+            "items": [
+                {"option_id": existing_option_id, "quantity": "2.00"},
+                {"option_id": hidden_option_id, "quantity": "1.00"},
+            ]
+        },
+    )
+
+    assert response.status_code == 409
+
+

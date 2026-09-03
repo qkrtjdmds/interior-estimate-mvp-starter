@@ -1,7 +1,10 @@
 ﻿from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.auth import router as auth_router
+from app.api.catalog import router as catalog_router
 from app.api.categories import router as categories_router
+from app.api.estimate_shares import router as estimate_shares_router
 from app.api.estimates import router as estimates_router
 from app.api.health import router as health_router
 from app.api.items import router as items_router
@@ -19,12 +22,17 @@ app.add_middleware(
 )
 
 app.include_router(health_router)
+app.include_router(auth_router)
+app.include_router(catalog_router)
 app.include_router(categories_router)
 app.include_router(items_router)
 app.include_router(options_router)
 app.include_router(estimates_router)
+app.include_router(estimate_shares_router)
 
 
 @app.get("/")
 def root() -> dict[str, str]:
     return {"message": settings.app_name}
+
+

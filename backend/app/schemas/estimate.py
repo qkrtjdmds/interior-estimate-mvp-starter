@@ -23,6 +23,26 @@ class EstimateItemsReplace(BaseModel):
         return self
 
 
+class EstimatePreviewItemResponse(BaseModel):
+    option_id: int
+    category_name: str
+    item_name: str
+    option_name: str
+    unit: str
+    unit_price: Decimal
+    quantity: Decimal
+    line_total: Decimal
+    sort_order: int
+
+
+class EstimatePreviewResponse(BaseModel):
+    items: list[EstimatePreviewItemResponse]
+    subtotal: Decimal
+    vat_rate: Decimal
+    vat_amount: Decimal
+    total_amount: Decimal
+
+
 class EstimateItemResponse(BaseModel):
     id: int
     estimate_id: int

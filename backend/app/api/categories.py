@@ -4,11 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.api.dependencies import get_current_admin
 from app.crud import category as category_crud
 from app.db.session import get_db
 from app.schemas.category import CategoryCreate, CategoryResponse, CategoryUpdate
 
-router = APIRouter(prefix="/api/categories", tags=["categories"])
+router = APIRouter(prefix="/api/categories", tags=["categories"], dependencies=[Depends(get_current_admin)])
 DbSession = Annotated[Session, Depends(get_db)]
 
 
