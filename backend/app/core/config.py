@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -9,7 +9,7 @@ PROJECT_DIR = BASE_DIR.parent
 class Settings(BaseSettings):
     app_name: str = "Interior Estimate API"
     database_url: str
-    cors_origins: str = "http://localhost:5173"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://192.168.219.109:5173"
     jwt_secret_key: str | None = None
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 480
@@ -32,4 +32,5 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
 

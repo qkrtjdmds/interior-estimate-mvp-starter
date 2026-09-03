@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 from decimal import Decimal
 from typing import Annotated
 
@@ -33,7 +33,7 @@ ALLOWED_STATUS_TRANSITIONS = {
     "confirmed": {"confirmed", "cancelled"},
     "cancelled": {"cancelled"},
 }
-BASIC_UPDATE_FIELDS = {"customer_name", "customer_phone", "project_address", "notes", "valid_until"}
+BASIC_UPDATE_FIELDS = {"customer_name", "customer_phone", "customer_email", "housing_type", "floor_area_pyeong", "renovation_scope", "preferred_timeline", "project_address", "notes", "valid_until"}
 
 
 def _handle_unexpected_error(db: Session, exc: Exception) -> None:

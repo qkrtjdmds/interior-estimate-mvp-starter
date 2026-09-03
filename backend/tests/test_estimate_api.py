@@ -581,3 +581,39 @@ def test_replace_new_hidden_option_is_rejected_even_when_existing_snapshot_allow
     assert response.status_code == 409
 
 
+
+
+def test_create_estimate_accepts_questionnaire_fields() -> None:
+    option_id = create_option("Questionnaire", "100.00")
+
+    response = client.post(
+        "/api/estimates",
+        json={
+            "customer_name": "Alice",
+            "customer_phone": "010-0000-0000",
+            "customer_email": "alice@example.com",
+            "housing_type": "아파트",
+            "floor_area_pyeong": "32.50",
+            "renovation_scope": "부분 인테리어",
+            "preferred_timeline": "1개월 이내",
+            "project_address": "서울 마포구",
+            "notes": "우드톤을 원합니다.",
+            "items": [{"option_id": option_id, "quantity": "1.00"}],
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["customer_email"] == "alice@example.com"
+    assert body["housing_type"] == "아파트"
+    assert Decimal(str(body["floor_area_pyeong"])) == Decimal("32.50")
+    assert body["renovation_scope"] == "부분 인테리어"
+    assert body["preferred_timeline"] == "1개월 이내"
+    assert body["project_address"] == "서울 마포구"
+    assert body["notes"] == "우드톤을 원합니다."
+
+    invalid_email = client.post(
+        "/api/estimates",
+        json={"customer_name": "Alice", "customer_email": "bad-email", "items": [{"option_id": option_id, "quantity": "1.00"}]},
+    )
+    assert invalid_email.status_code == 422

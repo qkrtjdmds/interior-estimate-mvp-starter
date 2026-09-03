@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 from decimal import Decimal
 from uuid import uuid4
 
@@ -100,6 +100,11 @@ def create_estimate(db: Session, estimate_in: EstimateCreate, options_by_id: dic
             estimate_number=generate_estimate_number(),
             customer_name=estimate_in.customer_name.strip(),
             customer_phone=estimate_in.customer_phone,
+            customer_email=estimate_in.customer_email,
+            housing_type=estimate_in.housing_type,
+            floor_area_pyeong=estimate_in.floor_area_pyeong,
+            renovation_scope=estimate_in.renovation_scope,
+            preferred_timeline=estimate_in.preferred_timeline,
             project_address=estimate_in.project_address,
             status="draft",
             notes=estimate_in.notes,

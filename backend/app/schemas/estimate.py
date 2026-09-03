@@ -1,9 +1,11 @@
 ﻿from datetime import date, datetime
 from decimal import Decimal
+import re
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 ALLOWED_ESTIMATE_STATUSES = {"draft", "submitted", "confirmed", "cancelled"}
+EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class EstimateItemCreate(BaseModel):
@@ -65,6 +67,11 @@ class EstimateItemResponse(BaseModel):
 class EstimateCreate(BaseModel):
     customer_name: str = Field(min_length=1, max_length=100)
     customer_phone: str | None = Field(default=None, max_length=50)
+    customer_email: str | None = Field(default=None, max_length=255)
+    housing_type: str | None = Field(default=None, max_length=50)
+    floor_area_pyeong: Decimal | None = Field(default=None, gt=0, max_digits=8, decimal_places=2)
+    renovation_scope: str | None = Field(default=None, max_length=50)
+    preferred_timeline: str | None = Field(default=None, max_length=50)
     project_address: str | None = Field(default=None, max_length=255)
     notes: str | None = None
     valid_until: date | None = None
@@ -75,7 +82,19 @@ class EstimateCreate(BaseModel):
     def customer_name_must_not_be_blank(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("customer_name must not be blank")
-        return value
+        return value.strip()
+
+    @field_validator("customer_email")
+    @classmethod
+    def customer_email_must_be_valid(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        stripped = value.strip()
+        if not stripped:
+            return None
+        if not EMAIL_PATTERN.match(stripped):
+            raise ValueError("customer_email must be valid")
+        return stripped
 
     @model_validator(mode="after")
     def option_ids_must_be_unique(self) -> "EstimateCreate":
@@ -88,6 +107,11 @@ class EstimateCreate(BaseModel):
 class EstimateUpdate(BaseModel):
     customer_name: str | None = Field(default=None, min_length=1, max_length=100)
     customer_phone: str | None = Field(default=None, max_length=50)
+    customer_email: str | None = Field(default=None, max_length=255)
+    housing_type: str | None = Field(default=None, max_length=50)
+    floor_area_pyeong: Decimal | None = Field(default=None, gt=0, max_digits=8, decimal_places=2)
+    renovation_scope: str | None = Field(default=None, max_length=50)
+    preferred_timeline: str | None = Field(default=None, max_length=50)
     project_address: str | None = Field(default=None, max_length=255)
     status: str | None = None
     notes: str | None = None
@@ -98,7 +122,19 @@ class EstimateUpdate(BaseModel):
     def customer_name_must_not_be_blank(cls, value: str | None) -> str | None:
         if value is not None and not value.strip():
             raise ValueError("customer_name must not be blank")
-        return value
+        return value.strip() if value is not None else value
+
+    @field_validator("customer_email")
+    @classmethod
+    def customer_email_must_be_valid(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        stripped = value.strip()
+        if not stripped:
+            return None
+        if not EMAIL_PATTERN.match(stripped):
+            raise ValueError("customer_email must be valid")
+        return stripped
 
     @field_validator("status")
     @classmethod
@@ -113,6 +149,11 @@ class EstimateListResponse(BaseModel):
     estimate_number: str
     customer_name: str
     customer_phone: str | None
+    customer_email: str | None
+    housing_type: str | None
+    floor_area_pyeong: Decimal | None
+    renovation_scope: str | None
+    preferred_timeline: str | None
     project_address: str | None
     status: str
     subtotal: Decimal

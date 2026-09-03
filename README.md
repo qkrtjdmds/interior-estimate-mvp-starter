@@ -1,4 +1,4 @@
-﻿# Interior Estimate MVP Starter
+# Interior Estimate MVP Starter
 
 인테리어 견적 자동화 웹서비스 MVP입니다. 현재 백엔드는 기준정보 관리, 고객 견적 생성, 관리자 견적 관리, 보안 공유 링크, 한국어 PDF 생성까지 구현되어 있습니다.
 
@@ -130,10 +130,12 @@ Frontend dev server는 기본적으로 http://localhost:5173 에서 실행됩니
 
 고객 견적 흐름:
 
-1. `GET /api/catalog`로 고객 노출 기준정보를 조회합니다.
-2. `POST /api/estimates/preview`로 선택 옵션의 예상 금액을 미리 계산합니다.
-3. `POST /api/estimates`로 견적을 생성합니다.
-4. 공유받은 고객은 raw token을 URL fragment로 받은 뒤 `X-Estimate-Share-Token` header로만 전송합니다.
+1. 개인정보를 입력합니다. 이름과 연락처는 필수이며 새로고침 복구용 localStorage에 저장하지 않습니다.
+2. 주거 형태, 평수, 시공 범위, 시공 지역, 희망 시기를 입력합니다.
+3. 원하는 시공 항목을 선택합니다.
+4. 항목별 옵션과 수량을 입력하고 POST /api/estimates/preview 결과로 예상 금액을 확인합니다.
+5. 추가 요청사항과 전체 내용을 확인한 뒤 POST /api/estimates로 견적을 생성합니다.
+6. 공유받은 고객은 raw token을 URL fragment로 받은 뒤 X-Estimate-Share-Token header로만 전송합니다.
 
 관리자 흐름:
 
