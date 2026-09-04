@@ -41,9 +41,9 @@ export interface EstimateListItem {
 
 export interface EstimateShareStatus {
   active: boolean
-  expires_at: string
+  expires_at: string | null
   revoked_at: string | null
-  created_at: string
+  created_at: string | null
   last_accessed_at: string | null
   access_count: number
 }

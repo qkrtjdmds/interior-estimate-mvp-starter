@@ -41,20 +41,26 @@ export default function AdminEstimateDetailPage() {
       return
     }
     setLoading(true)
-    Promise.allSettled([fetchAdminEstimate(safeEstimateId), fetchEstimateShareStatus(safeEstimateId)])
-      .then(([estimateResult, shareResult]) => {
-        if (estimateResult.status === 'fulfilled') {
-          setEstimate(estimateResult.value)
-          setError(null)
-        } else {
-          setError(getAdminApiErrorMessage(estimateResult.reason))
-        }
-        if (shareResult.status === 'fulfilled') setShareStatus(shareResult.value)
-        else setShareStatus(null)
+    setError(null)
+    setShareStatus(null)
+    setActionMessage(null)
+    fetchAdminEstimate(safeEstimateId)
+      .then((estimateData) => {
+        setEstimate(estimateData)
+        return fetchEstimateShareStatus(safeEstimateId)
+          .then((shareData) => setShareStatus(shareData.active ? shareData : null))
+          .catch((shareError) => {
+            setShareStatus(null)
+            setActionMessage(getAdminApiErrorMessage(shareError))
+          })
+      })
+      .catch((requestError) => {
+        setEstimate(null)
+        setShareStatus(null)
+        setError(getAdminApiErrorMessage(requestError))
       })
       .finally(() => setLoading(false))
   }
-
   useEffect(() => {
     load()
   }, [safeEstimateId])
@@ -189,8 +195,9 @@ export default function AdminEstimateDetailPage() {
           <h2>공유와 PDF</h2>
           <div className="admin-actions-column">
             <button className="button primary-button" type="button" disabled={!canCreateShare || shareLoading} onClick={handleCreateShare}>{shareLoading ? '생성 중' : shareStatus?.active ? '새 공유 링크 발급' : '공유 링크 생성'}</button>
-            {shareStatus && <p className="small-note">만료일: {formatDateTime(shareStatus.expires_at)} / 조회 {shareStatus.access_count}회</p>}
-            {shareStatus && <button className="button ghost-button" type="button" disabled={shareLoading} onClick={handleRevokeShare}>공유 링크 폐기</button>}
+            {shareStatus?.active && <p className="small-note">만료일: {formatDateTime(shareStatus.expires_at)} / 조회 {shareStatus.access_count}회</p>}
+            {!shareStatus && canCreateShare && <p className="small-note">생성된 공유 링크가 없습니다.</p>}
+            {shareStatus?.active && <button className="button ghost-button" type="button" disabled={shareLoading} onClick={handleRevokeShare}>공유 링크 폐기</button>}
             {shareLink && <label>공유 링크<input readOnly value={shareLink} onFocus={(event) => event.target.select()} /></label>}
             {manualCopyVisible && <p className="small-note">브라우저 복사가 차단되어 입력창에서 직접 복사해야 합니다.</p>}
             {!canCreateShare && <p className="small-note">상담 중, 견적 확정, 완료 상태에서 공유 링크를 만들 수 있습니다.</p>}

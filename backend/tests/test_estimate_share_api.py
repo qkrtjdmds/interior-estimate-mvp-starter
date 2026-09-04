@@ -259,3 +259,22 @@ def test_cancelled_estimate_revokes_active_share() -> None:
         assert share.revoked_at is not None
 
 
+
+
+def test_share_status_without_active_share_returns_empty_state_and_missing_estimate_is_404() -> None:
+    admin_token = create_admin_token()
+    estimate_id = create_submitted_estimate()
+
+    status_response = client.get(f"/api/estimates/{estimate_id}/share", headers=auth_headers(admin_token))
+
+    assert status_response.status_code == 200
+    body = status_response.json()
+    assert body == {
+        "active": False,
+        "expires_at": None,
+        "revoked_at": None,
+        "created_at": None,
+        "last_accessed_at": None,
+        "access_count": 0,
+    }
+    assert client.get("/api/estimates/999/share", headers=auth_headers(admin_token)).status_code == 404

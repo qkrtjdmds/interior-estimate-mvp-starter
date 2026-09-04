@@ -17,11 +17,11 @@ class EstimateShareCreateResponse(BaseModel):
 
 class EstimateShareStatusResponse(BaseModel):
     active: bool
-    expires_at: datetime
-    revoked_at: datetime | None
-    created_at: datetime
-    last_accessed_at: datetime | None
-    access_count: int
+    expires_at: datetime | None = None
+    revoked_at: datetime | None = None
+    created_at: datetime | None = None
+    last_accessed_at: datetime | None = None
+    access_count: int = 0
 
 
 class PublicEstimateItemResponse(BaseModel):

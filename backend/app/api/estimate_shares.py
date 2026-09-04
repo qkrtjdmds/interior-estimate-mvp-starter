@@ -144,7 +144,7 @@ def get_estimate_share_status(estimate_id: int, db: DbSession, current_admin: Cu
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Estimate not found")
     share = share_crud.get_active_share_for_estimate(db, estimate_id)
     if share is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active share not found")
+        return EstimateShareStatusResponse(active=False)
     return share
 
 
