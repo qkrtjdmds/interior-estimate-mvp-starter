@@ -222,7 +222,7 @@ export default function AdminCatalogPage() {
       setEditor(null)
       setDirty(false)
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : getAdminApiErrorMessage(requestError))
+      setError(requestError instanceof Error && !('response' in requestError) ? requestError.message : getAdminApiErrorMessage(requestError))
     } finally {
       setSaving(false)
     }
@@ -285,7 +285,7 @@ export default function AdminCatalogPage() {
       </section>
 
       {notice && <p className="admin-success" role="status">{notice}</p>}
-      {error && <ApiState title="처리 실패" message={error} action={<button className="button ghost-button" type="button" onClick={() => setError(null)}>닫기</button>} />}
+      {error && <ApiState title="처리 실패" message={error} action={<div className="inline-actions"><button className="button ghost-button" type="button" onClick={() => setError(null)}>닫기</button><button className="button ghost-button" type="button" onClick={loadCatalog}>다시 시도</button></div>} />}
       {loading && <ApiState title="카탈로그를 불러오는 중" message="관리자 기준정보를 조회하고 있습니다." />}
 
       {!loading && (
@@ -331,7 +331,7 @@ export default function AdminCatalogPage() {
         </div>
       )}
 
-      {editor && <CatalogEditor editor={editor} categories={sortedCategories} items={byOrder(items)} selectedCategoryId={selectedCategoryId} selectedItemId={selectedItemId} saving={saving} onDirty={() => setDirty(true)} onCancel={() => { setEditor(null); setDirty(false) }} onSubmit={submitEditor} />}
+      {editor && <CatalogEditor editor={editor} categories={sortedCategories} items={byOrder(items)} selectedCategoryId={selectedCategoryId} selectedItemId={selectedItemId} nextOptionSortOrder={nextOrder(itemOptions)} saving={saving} onDirty={() => setDirty(true)} onCancel={() => { setEditor(null); setDirty(false) }} onSubmit={submitEditor} />}
     </main>
   )
 }
@@ -350,10 +350,10 @@ function RowActions({ onEdit, onToggle, onMoveUp, onMoveDown, active, saving }: 
   return <div className="catalog-row-actions"><button type="button" onClick={onEdit} disabled={saving}>수정</button><button type="button" onClick={onMoveUp} disabled={saving}>위</button><button type="button" onClick={onMoveDown} disabled={saving}>아래</button><button type="button" onClick={onToggle} disabled={saving}>{active ? '비활성화' : '활성화'}</button></div>
 }
 
-function CatalogEditor({ editor, categories, items, selectedCategoryId, selectedItemId, saving, onDirty, onCancel, onSubmit }: { editor: EditorMode; categories: AdminCategory[]; items: AdminItem[]; selectedCategoryId: number | null; selectedItemId: number | null; saving: boolean; onDirty: () => void; onCancel: () => void; onSubmit: (form: CategoryFormState | ItemFormState | OptionFormState) => Promise<void> }) {
+function CatalogEditor({ editor, categories, items, selectedCategoryId, selectedItemId, nextOptionSortOrder, saving, onDirty, onCancel, onSubmit }: { editor: EditorMode; categories: AdminCategory[]; items: AdminItem[]; selectedCategoryId: number | null; selectedItemId: number | null; nextOptionSortOrder: number; saving: boolean; onDirty: () => void; onCancel: () => void; onSubmit: (form: CategoryFormState | ItemFormState | OptionFormState) => Promise<void> }) {
   const [categoryState, setCategoryState] = useState<CategoryFormState>(() => editor?.type === 'category' && editor.item ? categoryForm(editor.item) : emptyCategoryForm(nextOrder(categories)))
   const [itemState, setItemState] = useState<ItemFormState>(() => editor?.type === 'item' && editor.item ? itemForm(editor.item) : emptyItemForm(selectedCategoryId ?? 0, nextOrder(items.filter((item) => item.category_id === selectedCategoryId))))
-  const [optionState, setOptionState] = useState<OptionFormState>(() => editor?.type === 'option' && editor.item ? optionForm(editor.item) : emptyOptionForm(selectedItemId ?? 0, 10))
+  const [optionState, setOptionState] = useState<OptionFormState>(() => editor?.type === 'option' && editor.item ? optionForm(editor.item) : emptyOptionForm(selectedItemId ?? 0, nextOptionSortOrder))
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {

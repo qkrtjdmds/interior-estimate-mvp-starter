@@ -95,6 +95,7 @@ export default function EstimateWizardPage() {
   const [catalog, setCatalog] = useState<CatalogCategory[]>([])
   const [catalogLoading, setCatalogLoading] = useState(false)
   const [catalogError, setCatalogError] = useState<string | null>(null)
+  const [catalogLoaded, setCatalogLoaded] = useState(false)
   const [catalogSyncNotice, setCatalogSyncNotice] = useState<string | null>(null)
   const [preview, setPreview] = useState<EstimatePreview | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -107,10 +108,12 @@ export default function EstimateWizardPage() {
     if (!['categories', 'options', 'review'].includes(step.key)) return
     let alive = true
     setCatalogLoading(true)
+    setCatalogLoaded(false)
     fetchCatalog()
       .then((data) => {
         if (!alive) return
         setCatalog(data)
+        setCatalogLoaded(true)
         setCatalogError(null)
       })
       .catch((error) => {
@@ -125,8 +128,8 @@ export default function EstimateWizardPage() {
     }
   }, [step.key])
 
-    useEffect(() => {
-    if (catalog.length === 0) return
+  useEffect(() => {
+    if (!catalogLoaded) return
     const availableItemIds = new Set(catalog.flatMap((category) => category.items.map((item) => item.id)))
     const availableOptionIds = new Set(catalog.flatMap((category) => category.items.flatMap((item) => item.options.map((option) => option.id))))
     const validItemIds = selectedItemIds.filter((itemId) => availableItemIds.has(itemId))
@@ -138,8 +141,9 @@ export default function EstimateWizardPage() {
     if (removedItemCount > 0 || invalidOptionIds.length > 0) {
       setCatalogSyncNotice('현재 카탈로그에서 사용할 수 없는 저장 항목을 제거했습니다. 옵션을 다시 확인해 주세요.')
     }
-  }, [catalog, removeItem, selectedItemIds, selectedItems, setSelectedItemIds])
-useEffect(() => {
+  }, [catalog, catalogLoaded, removeItem, selectedItemIds, selectedItems, setSelectedItemIds])
+
+  useEffect(() => {
     if (debouncedItems.length === 0) {
       setPreview(null)
       setPreviewError(null)
