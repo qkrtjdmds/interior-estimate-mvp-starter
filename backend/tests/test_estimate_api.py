@@ -1,4 +1,4 @@
-﻿import os
+import os
 from collections.abc import Generator
 from decimal import Decimal
 
@@ -634,3 +634,155 @@ def test_completed_status_transition_from_confirmed() -> None:
     assert completed.status_code == 200
     assert completed.json()["status"] == "completed"
     assert client.patch(f"/api/estimates/{estimate_id}", json={"status": "draft"}).status_code == 409
+
+def admin_consultation_payload(estimate_body: dict, items: list[dict], **overrides) -> dict:
+    payload = {
+        "expected_updated_at": estimate_body["updated_at"],
+        "housing_type": "아파트",
+        "floor_area_pyeong": "33.00",
+        "renovation_scope": "부분 인테리어",
+        "preferred_timeline": "1개월 이내",
+        "project_address": "서울 강남구",
+        "admin_consultation_note": "상담 후 거실 범위 추가",
+        "items": items,
+    }
+    payload.update(overrides)
+    return payload
+
+
+def make_submitted_estimate(option_id: int) -> dict:
+    created = client.post(
+        "/api/estimates",
+        json={"customer_name": "Alice", "notes": "customer original", "items": [{"option_id": option_id, "quantity": "1.00"}]},
+    ).json()
+    submitted = client.patch(f"/api/estimates/{created['id']}", json={"status": "submitted"})
+    assert submitted.status_code == 200
+    return submitted.json()
+
+
+def test_admin_consultation_update_success_recalculates_and_preserves_customer_notes() -> None:
+    option_a = create_option("Consult A", "100.00")
+    option_b = create_option("Consult B", "50.00")
+    estimate = make_submitted_estimate(option_a)
+
+    response = client.put(
+        f"/api/estimates/{estimate['id']}/consultation",
+        json=admin_consultation_payload(
+            estimate,
+            [
+                {"option_id": option_a, "quantity": "2.00", "sort_order": 2},
+                {"option_id": option_b, "quantity": "3.00", "sort_order": 1},
+            ],
+        ),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "submitted"
+    assert body["notes"] == "customer original"
+    assert body["admin_consultation_note"] == "상담 후 거실 범위 추가"
+    assert body["housing_type"] == "아파트"
+    assert Decimal(str(body["floor_area_pyeong"])) == Decimal("33.00")
+    assert [item["option_id"] for item in body["items"]] == [option_b, option_a]
+    assert Decimal(str(body["subtotal"])) == Decimal("350.00")
+    assert Decimal(str(body["vat_amount"])) == Decimal("35.00")
+    assert Decimal(str(body["total_amount"])) == Decimal("385.00")
+
+
+def test_admin_consultation_update_uses_current_catalog_price_for_new_snapshots() -> None:
+    option_id = create_option("Consult Snapshot", "100.00")
+    estimate = make_submitted_estimate(option_id)
+
+    with TestingSessionLocal() as db:
+        option = db.get(Option, option_id)
+        option.default_price = Decimal("200.00")
+        db.commit()
+
+    response = client.put(
+        f"/api/estimates/{estimate['id']}/consultation",
+        json=admin_consultation_payload(estimate, [{"option_id": option_id, "quantity": "2.00", "sort_order": 1}]),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert Decimal(str(body["items"][0]["unit_price_snapshot"])) == Decimal("200.00")
+    assert Decimal(str(body["items"][0]["line_total"])) == Decimal("400.00")
+    assert Decimal(str(body["total_amount"])) == Decimal("440.00")
+
+    with TestingSessionLocal() as db:
+        option = db.get(Option, option_id)
+        option.default_price = Decimal("999.00")
+        db.commit()
+
+    unchanged = client.get(f"/api/estimates/{estimate['id']}").json()
+    assert Decimal(str(unchanged["items"][0]["unit_price_snapshot"])) == Decimal("200.00")
+
+
+def test_admin_consultation_update_blocks_other_statuses_and_stale_requests() -> None:
+    option_id = create_option("Consult Blocked", "100.00")
+    draft = client.post(
+        "/api/estimates",
+        json={"customer_name": "Draft", "items": [{"option_id": option_id, "quantity": "1.00"}]},
+    ).json()
+    assert client.put(
+        f"/api/estimates/{draft['id']}/consultation",
+        json=admin_consultation_payload(draft, [{"option_id": option_id, "quantity": "1.00", "sort_order": 1}]),
+    ).status_code == 409
+
+    submitted = make_submitted_estimate(option_id)
+    first = client.put(
+        f"/api/estimates/{submitted['id']}/consultation",
+        json=admin_consultation_payload(submitted, [{"option_id": option_id, "quantity": "2.00", "sort_order": 1}]),
+    )
+    assert first.status_code == 200
+    second = client.put(
+        f"/api/estimates/{submitted['id']}/consultation",
+        json=admin_consultation_payload(submitted, [{"option_id": option_id, "quantity": "3.00", "sort_order": 1}]),
+    )
+    assert second.status_code == 409
+
+    confirmed = client.patch(f"/api/estimates/{submitted['id']}", json={"status": "confirmed"})
+    assert confirmed.status_code == 200
+    assert client.put(
+        f"/api/estimates/{submitted['id']}/consultation",
+        json=admin_consultation_payload(confirmed.json(), [{"option_id": option_id, "quantity": "1.00", "sort_order": 1}]),
+    ).status_code == 409
+
+
+def test_admin_consultation_update_validation_errors_are_clear() -> None:
+    option_id = create_option("Consult Validation", "100.00")
+    inactive_option_id = create_option("Consult Inactive", "100.00", active=False)
+    estimate = make_submitted_estimate(option_id)
+
+    assert client.put(f"/api/estimates/{estimate['id']}/consultation", json=admin_consultation_payload(estimate, [])).status_code == 422
+    assert client.put(
+        f"/api/estimates/{estimate['id']}/consultation",
+        json=admin_consultation_payload(estimate, [{"option_id": option_id, "quantity": "0", "sort_order": 1}]),
+    ).status_code == 422
+    assert client.put(
+        f"/api/estimates/{estimate['id']}/consultation",
+        json=admin_consultation_payload(estimate, [{"option_id": 999, "quantity": "1.00", "sort_order": 1}]),
+    ).status_code == 404
+    assert client.put(
+        f"/api/estimates/{estimate['id']}/consultation",
+        json=admin_consultation_payload(estimate, [{"option_id": inactive_option_id, "quantity": "1.00", "sort_order": 1}]),
+    ).status_code == 409
+
+
+def test_admin_consultation_note_is_hidden_from_public_share_response() -> None:
+    option_id = create_option("Consult Public", "100.00")
+    estimate = make_submitted_estimate(option_id)
+    updated = client.put(
+        f"/api/estimates/{estimate['id']}/consultation",
+        json=admin_consultation_payload(estimate, [{"option_id": option_id, "quantity": "1.00", "sort_order": 1}], admin_consultation_note="internal only"),
+    ).json()
+    raw_token = client.post(f"/api/estimates/{updated['id']}/share").json()["share_token"]
+
+    public = client.get("/api/public/estimate", headers={"X-Estimate-Share-Token": raw_token})
+
+    assert public.status_code == 200
+    body = public.json()
+    assert "admin_consultation_note" not in body
+    assert "notes" not in body
+    assert "customer_phone" not in body
+    assert "customer_email" not in body

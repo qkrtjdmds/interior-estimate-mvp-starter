@@ -1,4 +1,4 @@
-﻿import os
+import os
 from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -238,12 +238,17 @@ def test_public_and_admin_data_policy_for_pdf(monkeypatch) -> None:
                 "customer_phone": estimate.customer_phone if not options.public else None,
                 "project_address": estimate.project_address if not options.public else None,
                 "notes": estimate.notes if not options.public else None,
+                "admin_consultation_note": estimate.admin_consultation_note if not options.public else None,
             }
         )
         return b"%PDF-1.4\n%fake"
 
     admin_token = create_admin_token()
     estimate_id, _ = create_estimate(status="submitted")
+    with TestingSessionLocal() as db:
+        estimate = db.get(Estimate, estimate_id)
+        estimate.admin_consultation_note = "internal note"
+        db.commit()
     raw_token = create_share_token(estimate_id, admin_token)
     monkeypatch.setattr(estimate_api, "build_estimate_pdf", fake_build)
     monkeypatch.setattr(share_api, "build_estimate_pdf", fake_build)
@@ -254,11 +259,12 @@ def test_public_and_admin_data_policy_for_pdf(monkeypatch) -> None:
     assert captured[0]["customer_phone"] == "010-0000-0000"
     assert captured[0]["project_address"] == "Seoul"
     assert captured[0]["notes"] == "private memo"
+    assert captured[0]["admin_consultation_note"] == "internal note"
     assert captured[1]["public"] is True
     assert captured[1]["customer_phone"] is None
     assert captured[1]["project_address"] is None
     assert captured[1]["notes"] is None
-
+    assert captured[1]["admin_consultation_note"] is None
 
 def test_format_helpers_and_safe_filename() -> None:
     assert format_money(Decimal("45000.00")) == "45,000원"

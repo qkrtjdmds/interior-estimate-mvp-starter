@@ -1,4 +1,4 @@
-﻿import os
+import os
 from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
 
@@ -180,6 +180,7 @@ def test_admin_endpoints_require_auth_and_accept_valid_token() -> None:
         ("get", "/api/items", None),
         ("get", "/api/options", None),
         ("get", "/api/estimates", None),
+        ("put", "/api/estimates/1/consultation", {"expected_updated_at": "2026-01-01T00:00:00Z", "housing_type": "아파트", "floor_area_pyeong": "30", "renovation_scope": "부분", "preferred_timeline": "1개월 이내", "project_address": "서울", "items": [{"option_id": 1, "quantity": "1", "sort_order": 1}]}),
     ]
     for method, path, payload in protected_requests:
         response = getattr(client, method)(path, json=payload) if payload is not None else getattr(client, method)(path)

@@ -1,4 +1,4 @@
-from datetime import date, datetime
+﻿from datetime import date, datetime
 from decimal import Decimal
 import re
 
@@ -19,6 +19,40 @@ class EstimateItemsReplace(BaseModel):
 
     @model_validator(mode="after")
     def option_ids_must_be_unique(self) -> "EstimateItemsReplace":
+        option_ids = [item.option_id for item in self.items]
+        if len(option_ids) != len(set(option_ids)):
+            raise ValueError("duplicate option_id is not allowed")
+        return self
+
+
+class EstimateAdminConsultationUpdate(BaseModel):
+    expected_updated_at: datetime
+    housing_type: str = Field(min_length=1, max_length=50)
+    floor_area_pyeong: Decimal = Field(gt=0, max_digits=8, decimal_places=2)
+    renovation_scope: str = Field(min_length=1, max_length=50)
+    preferred_timeline: str = Field(min_length=1, max_length=50)
+    project_address: str = Field(min_length=1, max_length=255)
+    admin_consultation_note: str | None = None
+    items: list[EstimateItemCreate] = Field(min_length=1)
+
+    @field_validator("housing_type", "renovation_scope", "preferred_timeline", "project_address")
+    @classmethod
+    def text_fields_must_not_be_blank(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("field must not be blank")
+        return stripped
+
+    @field_validator("admin_consultation_note")
+    @classmethod
+    def empty_admin_note_becomes_none(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+    @model_validator(mode="after")
+    def option_ids_must_be_unique(self) -> "EstimateAdminConsultationUpdate":
         option_ids = [item.option_id for item in self.items]
         if len(option_ids) != len(set(option_ids)):
             raise ValueError("duplicate option_id is not allowed")
@@ -169,4 +203,5 @@ class EstimateListResponse(BaseModel):
 
 class EstimateDetailResponse(EstimateListResponse):
     notes: str | None
+    admin_consultation_note: str | None = None
     items: list[EstimateItemResponse]

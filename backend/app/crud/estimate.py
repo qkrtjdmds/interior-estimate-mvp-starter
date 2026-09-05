@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
 
@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models import Estimate, EstimateItem, Item, Option
-from app.schemas.estimate import EstimateCreate, EstimateItemsReplace, EstimateUpdate
+from app.schemas.estimate import EstimateAdminConsultationUpdate, EstimateCreate, EstimateItemsReplace, EstimateUpdate
 from app.services.estimate_calculator import DEFAULT_VAT_RATE, calculate_line_total, calculate_totals
 
 
@@ -155,6 +155,34 @@ def replace_estimate_items(
     db.refresh(estimate)
     return get_estimate(db, estimate.id) or estimate
 
+
+def update_admin_consultation_estimate(
+    db: Session,
+    estimate: Estimate,
+    estimate_in: EstimateAdminConsultationUpdate,
+    options_by_id: dict[int, Option],
+) -> Estimate:
+    for existing_item in list(estimate.items):
+        db.delete(existing_item)
+        estimate.items.remove(existing_item)
+    db.flush()
+
+    estimate.items = [
+        _new_estimate_item(options_by_id[item_in.option_id], item_in.quantity, item_in.sort_order)
+        for item_in in estimate_in.items
+    ]
+    estimate.housing_type = estimate_in.housing_type
+    estimate.floor_area_pyeong = estimate_in.floor_area_pyeong
+    estimate.renovation_scope = estimate_in.renovation_scope
+    estimate.preferred_timeline = estimate_in.preferred_timeline
+    estimate.project_address = estimate_in.project_address
+    estimate.admin_consultation_note = estimate_in.admin_consultation_note
+    estimate.updated_at = datetime.now(timezone.utc)
+    recalculate_estimate_totals(estimate)
+    db.add(estimate)
+    db.commit()
+    db.refresh(estimate)
+    return get_estimate(db, estimate.id) or estimate
 
 def update_estimate(db: Session, estimate: Estimate, estimate_in: EstimateUpdate) -> Estimate:
     for field, value in estimate_in.model_dump(exclude_unset=True).items():

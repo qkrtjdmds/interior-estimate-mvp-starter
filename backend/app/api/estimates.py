@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Annotated
 
@@ -13,6 +13,7 @@ from app.db.session import get_db
 from app.models import Option
 from app.schemas.estimate import (
     ALLOWED_ESTIMATE_STATUSES,
+    EstimateAdminConsultationUpdate,
     EstimateCreate,
     EstimateDetailResponse,
     EstimateItemsReplace,
@@ -36,6 +37,19 @@ ALLOWED_STATUS_TRANSITIONS = {
 }
 BASIC_UPDATE_FIELDS = {"customer_name", "customer_phone", "customer_email", "housing_type", "floor_area_pyeong", "renovation_scope", "preferred_timeline", "project_address", "notes", "valid_until"}
 
+
+def _normalize_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _is_stale_update(current_updated_at: datetime, expected_updated_at: datetime) -> bool:
+    return abs((_normalize_datetime(current_updated_at) - _normalize_datetime(expected_updated_at)).total_seconds()) > 0.001
+
+
+def _option_is_admin_usable(option: Option) -> bool:
+    return option.active and option.item.active and option.item.category.active
 
 def _handle_unexpected_error(db: Session, exc: Exception) -> None:
     db.rollback()
@@ -266,6 +280,40 @@ def update_estimate(estimate_id: int, estimate_in: EstimateUpdate, db: DbSession
 
 
 @router.put(
+    "/{estimate_id}/consultation",
+    response_model=EstimateDetailResponse,
+    summary="Update estimate during admin consultation",
+    dependencies=[Depends(get_current_admin)],
+    responses={
+        404: {"description": "Estimate or option not found"},
+        409: {"description": "Estimate is not editable, stale update, or option cannot be used"},
+    },
+)
+def update_estimate_consultation(estimate_id: int, estimate_in: EstimateAdminConsultationUpdate, db: DbSession) -> EstimateDetailResponse:
+    estimate = estimate_crud.get_estimate(db, estimate_id)
+    if estimate is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Estimate not found")
+    if estimate.status != "submitted":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only submitted estimates can be edited during consultation")
+    if _is_stale_update(estimate.updated_at, estimate_in.expected_updated_at):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Estimate was changed by another request. Refresh and try again")
+
+    option_ids = [item.option_id for item in estimate_in.items]
+    options = estimate_crud.get_options_for_estimate(db, option_ids)
+    options_by_id = {option.id: option for option in options}
+    if any(option_id not in options_by_id for option_id in option_ids):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Option not found")
+    for item_in in estimate_in.items:
+        if not _option_is_admin_usable(options_by_id[item_in.option_id]):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Option cannot be used")
+    try:
+        return estimate_crud.update_admin_consultation_estimate(db, estimate, estimate_in, options_by_id)
+    except SQLAlchemyError as exc:
+        _handle_db_error(db, exc)
+    except Exception as exc:
+        _handle_unexpected_error(db, exc)
+
+@router.put(
     "/{estimate_id}/items",
     response_model=EstimateDetailResponse,
     summary="Replace estimate items",
@@ -287,6 +335,3 @@ def replace_estimate_items(estimate_id: int, items_in: EstimateItemsReplace, db:
         _handle_db_error(db, exc)
     except Exception as exc:
         _handle_unexpected_error(db, exc)
-
-
-

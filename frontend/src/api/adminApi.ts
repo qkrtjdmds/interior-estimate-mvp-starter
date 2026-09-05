@@ -1,4 +1,4 @@
-﻿import axios from 'axios'
+import axios from 'axios'
 import { API_BASE_URL, getApiErrorMessage } from './client'
 import type { EstimateDetail, MoneyValue } from './types'
 
@@ -39,6 +39,22 @@ export interface EstimateListItem {
   updated_at: string
 }
 
+export interface EstimateConsultationUpdateItem {
+  option_id: number
+  quantity: string
+  sort_order: number
+}
+
+export interface EstimateConsultationUpdatePayload {
+  expected_updated_at: string
+  housing_type: string
+  floor_area_pyeong: string
+  renovation_scope: string
+  preferred_timeline: string
+  project_address: string
+  admin_consultation_note?: string | null
+  items: EstimateConsultationUpdateItem[]
+}
 export interface EstimateShareStatus {
   active: boolean
   expires_at: string | null
@@ -106,6 +122,10 @@ export async function fetchAdminEstimate(estimateId: number): Promise<EstimateDe
   return data
 }
 
+export async function updateEstimateConsultation(estimateId: number, payload: EstimateConsultationUpdatePayload): Promise<EstimateDetail> {
+  const { data } = await adminApiClient.put<EstimateDetail>(`/api/estimates/${estimateId}/consultation`, payload)
+  return data
+}
 export async function updateEstimateStatus(estimateId: number, status: string): Promise<EstimateDetail> {
   const { data } = await adminApiClient.patch<EstimateDetail>(`/api/estimates/${estimateId}`, { status })
   return data
@@ -136,6 +156,7 @@ export function getAdminApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
     if (error.response?.status === 401) return '아이디 또는 비밀번호를 확인해 주세요.'
     if (error.response?.status === 403) return '접근 권한이 없는 관리자 계정입니다.'
+    if (error.response?.status === 409) return '견적 상태가 변경되었거나 다른 요청이 먼저 수정했습니다. 새로고침 후 다시 시도해 주세요.'
   }
   return getApiErrorMessage(error)
 }

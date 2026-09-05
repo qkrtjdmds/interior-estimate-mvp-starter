@@ -1,4 +1,4 @@
-﻿export type MoneyValue = string | number
+export type MoneyValue = string | number
 
 export interface CatalogOption {
   id: number
@@ -82,6 +82,7 @@ export interface EstimateDetail {
   project_address: string | null
   status: string
   notes: string | null
+  admin_consultation_note: string | null
   subtotal: MoneyValue
   vat_rate: MoneyValue
   vat_amount: MoneyValue

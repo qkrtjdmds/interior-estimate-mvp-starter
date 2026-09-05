@@ -1,4 +1,4 @@
-﻿from datetime import date, datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Numeric, String, Text, UniqueConstraint, func
@@ -22,6 +22,7 @@ class Estimate(Base):
     project_address: Mapped[str | None] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(30), default="draft", nullable=False, index=True)
     notes: Mapped[str | None] = mapped_column(Text)
+    admin_consultation_note: Mapped[str | None] = mapped_column(Text)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
     vat_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
     vat_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)

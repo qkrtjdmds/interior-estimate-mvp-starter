@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
@@ -153,7 +153,9 @@ def _customer_rows(estimate: Estimate, options: PdfRenderOptions) -> list[list[o
     if estimate.project_address:
         rows.append(["현장 주소", estimate.project_address])
     if estimate.notes:
-        rows.append(["메모", estimate.notes])
+        rows.append(["고객 요청사항", estimate.notes])
+    if not options.public and estimate.admin_consultation_note:
+        rows.append(["관리자 상담 메모", estimate.admin_consultation_note])
     return rows
 
 

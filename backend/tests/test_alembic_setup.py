@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 from alembic.config import Config
 
@@ -70,3 +70,10 @@ def test_estimate_shares_migration_file_defines_revision() -> None:
     assert "token_hash" in migration
     assert "uq_estimate_shares_active_estimate" in migration
     assert "active IS TRUE" in migration
+
+def test_admin_consultation_note_migration_file_defines_revision() -> None:
+    migration = (Path("alembic/versions") / "0008_admin_consultation_note.py").read_text(encoding="ascii")
+
+    assert "0008_admin_consultation_note" in migration
+    assert "0007_estimate_questions" in migration
+    assert "admin_consultation_note" in migration
