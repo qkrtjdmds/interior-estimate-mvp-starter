@@ -19,15 +19,13 @@ interface ProjectInfo {
   requestNotes: string
 }
 
-interface PersistedDraftState {
+interface EstimateDraftState {
   selectedItemIds: number[]
   selectedItems: EstimateLineInput[]
   project: ProjectInfo
-  lastEstimate: EstimateDetail | null
-}
-
-interface EstimateDraftState extends PersistedDraftState {
   customer: CustomerInfo
+  contactCompleted: boolean
+  lastEstimate: EstimateDetail | null
 }
 
 interface EstimateDraftContextValue extends EstimateDraftState {
@@ -38,12 +36,13 @@ interface EstimateDraftContextValue extends EstimateDraftState {
   removeItem: (optionId: number) => void
   removeOptionsForItems: (itemIds: number[]) => void
   setCustomer: (customer: Partial<CustomerInfo>) => void
+  setContactCompleted: (completed: boolean) => void
   setProject: (project: Partial<ProjectInfo>) => void
   setLastEstimate: (estimate: EstimateDetail | null) => void
   resetDraft: () => void
 }
 
-const STORAGE_KEY = 'interior-estimate-draft-v2'
+const LEGACY_STORAGE_KEY = 'interior-estimate-draft-v2'
 
 const initialCustomer: CustomerInfo = {
   name: '',
@@ -62,46 +61,23 @@ const initialProject: ProjectInfo = {
   requestNotes: '',
 }
 
-const initialPersistedState: PersistedDraftState = {
+const initialDraftState: EstimateDraftState = {
   selectedItemIds: [],
   selectedItems: [],
   project: initialProject,
+  customer: initialCustomer,
+  contactCompleted: false,
   lastEstimate: null,
 }
 
 const EstimateDraftContext = createContext<EstimateDraftContextValue | null>(null)
 
-function loadPersistedState(): PersistedDraftState {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return initialPersistedState
-    const parsed = JSON.parse(raw) as Partial<PersistedDraftState>
-    return {
-      selectedItemIds: Array.isArray(parsed.selectedItemIds) ? parsed.selectedItemIds : [],
-      selectedItems: Array.isArray(parsed.selectedItems) ? parsed.selectedItems : [],
-      project: { ...initialProject, ...(parsed.project ?? {}) },
-      lastEstimate: parsed.lastEstimate ?? null,
-    }
-  } catch {
-    return initialPersistedState
-  }
-}
-
-function toPersistedState(state: EstimateDraftState): PersistedDraftState {
-  return {
-    selectedItemIds: state.selectedItemIds,
-    selectedItems: state.selectedItems,
-    project: state.project,
-    lastEstimate: state.lastEstimate,
-  }
-}
-
 export function EstimateDraftProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<EstimateDraftState>(() => ({ ...loadPersistedState(), customer: initialCustomer }))
+  const [state, setState] = useState<EstimateDraftState>(initialDraftState)
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(toPersistedState(state)))
-  }, [state.selectedItemIds, state.selectedItems, state.project, state.lastEstimate])
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY)
+  }, [])
 
   const setSelectedItemIds = useCallback((itemIds: number[]) => {
     setState((current) => ({ ...current, selectedItemIds: itemIds }))
@@ -154,6 +130,10 @@ export function EstimateDraftProvider({ children }: { children: ReactNode }) {
     setState((current) => ({ ...current, customer: { ...current.customer, ...customer } }))
   }, [])
 
+  const setContactCompleted = useCallback((completed: boolean) => {
+    setState((current) => ({ ...current, contactCompleted: completed }))
+  }, [])
+
   const setProject = useCallback((project: Partial<ProjectInfo>) => {
     setState((current) => ({ ...current, project: { ...current.project, ...project } }))
   }, [])
@@ -163,8 +143,8 @@ export function EstimateDraftProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const resetDraft = useCallback(() => {
-    setState({ ...initialPersistedState, customer: initialCustomer })
-    window.localStorage.removeItem(STORAGE_KEY)
+    setState(initialDraftState)
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY)
   }, [])
 
   const value = useMemo(
@@ -177,11 +157,12 @@ export function EstimateDraftProvider({ children }: { children: ReactNode }) {
       removeItem,
       removeOptionsForItems,
       setCustomer,
+      setContactCompleted,
       setProject,
       setLastEstimate,
       resetDraft,
     }),
-    [state, setSelectedItemIds, toggleSelectedItemId, addOrUpdateItem, updateQuantity, removeItem, removeOptionsForItems, setCustomer, setProject, setLastEstimate, resetDraft],
+    [state, setSelectedItemIds, toggleSelectedItemId, addOrUpdateItem, updateQuantity, removeItem, removeOptionsForItems, setCustomer, setContactCompleted, setProject, setLastEstimate, resetDraft],
   )
 
   return <EstimateDraftContext.Provider value={value}>{children}</EstimateDraftContext.Provider>

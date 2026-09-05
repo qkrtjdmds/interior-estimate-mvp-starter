@@ -11,9 +11,9 @@ export default function EstimateResultPage() {
     return (
       <main className="app-page narrow-page">
         <ApiState
-          title="저장된 견적 결과가 없습니다"
-          message="브라우저 저장 상태에 견적 결과가 남아 있지 않습니다. 새 견적을 작성해 주세요."
-          action={<Link className="button primary-button" to="/estimate/contact">견적 작성하기</Link>}
+          title="표시할 견적 결과가 없습니다"
+          message="견적 결과는 저장 직후 화면에서만 표시됩니다. 새로고침했거나 직접 접근한 경우 처음부터 다시 작성해 주세요."
+          action={<Link className="button primary-button" to="/" onClick={resetDraft}>처음으로</Link>}
         />
       </main>
     )

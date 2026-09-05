@@ -1,6 +1,9 @@
 ﻿import { Link } from 'react-router-dom'
+import { useEstimateDraft } from '../context/EstimateDraftContext'
 
 export default function HomePage() {
+  const { resetDraft } = useEstimateDraft()
+
   return (
     <main className="landing-page">
       <section className="hero-section consult-hero">
@@ -9,7 +12,7 @@ export default function HomePage() {
           <h1>우리 집 인테리어, 얼마쯤 들까?</h1>
           <p>몇 가지 질문에 답하면 간편하게 예상 견적을 확인할 수 있어요.</p>
           <div className="hero-actions">
-            <Link className="button primary-button" to="/estimate/contact">
+            <Link className="button primary-button" to="/estimate/contact" onClick={resetDraft}>
               견적 확인하기
             </Link>
           </div>

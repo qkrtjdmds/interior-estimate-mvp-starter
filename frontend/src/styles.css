@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   font-family: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
   color: #233128;
   background: #fbfaf6;
@@ -264,15 +264,27 @@ h3 {
   text-align: left;
   color: #25352a;
   cursor: pointer;
+  outline: none;
 }
 
 .option-card:hover,
+.option-card:focus-visible,
 .option-card.selected {
   border-color: #28553a;
 }
 
+.option-card:focus-visible {
+  box-shadow: 0 0 0 3px rgba(40, 85, 58, 0.18);
+}
+
 .option-card.selected {
   background: #eef6f0;
+  box-shadow: inset 0 0 0 2px #28553a;
+}
+
+.option-card.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .option-topline {
@@ -282,7 +294,15 @@ h3 {
   justify-content: space-between;
 }
 
-.badge {
+.option-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.badge,
+.option-selected-check {
   border-radius: 999px;
   padding: 4px 8px;
   background: #28553a;
@@ -290,6 +310,11 @@ h3 {
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.option-selected-check {
+  min-width: 24px;
+  text-align: center;
 }
 
 .option-description {
@@ -345,6 +370,12 @@ h3 {
   display: flex;
   align-items: flex-end;
   gap: 8px;
+  cursor: default;
+}
+
+.quantity-line input,
+.quantity-line button {
+  min-height: 44px;
 }
 
 .quantity-line label {
@@ -731,14 +762,10 @@ textarea {
   font-weight: 900;
 }
 
-.option-card > button {
-  width: 100%;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
+.option-card > .option-topline,
+.option-card > .option-description,
+.option-card > .option-price {
+  pointer-events: none;
 }
 
 .inline-total {
@@ -1469,5 +1496,85 @@ select {
   .catalog-editor {
     width: 100%;
     border-left: 0;
+  }
+}
+.consultation-editor {
+  display: grid;
+  gap: 18px;
+}
+
+.consultation-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.consultation-items-heading,
+.consultation-preview-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.consultation-items-heading h3 {
+  margin: 0;
+}
+
+.consultation-item-list {
+  display: grid;
+  gap: 12px;
+}
+
+.consultation-item-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(110px, 150px) minmax(130px, 180px) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid #d8d0c1;
+  border-radius: 8px;
+  background: #fffaf2;
+}
+
+.consultation-row-price {
+  display: grid;
+  gap: 4px;
+  min-height: 44px;
+  align-content: center;
+}
+
+.consultation-row-price span {
+  color: #687469;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.consultation-row-price strong {
+  color: #25352a;
+}
+
+.consultation-preview-total {
+  padding: 14px;
+  border: 1px solid #d8d0c1;
+  border-radius: 8px;
+  background: #eef6f0;
+}
+
+.consultation-preview-total span,
+.consultation-preview-total strong {
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .consultation-form-grid,
+  .consultation-item-row {
+    grid-template-columns: 1fr;
+  }
+
+  .consultation-item-row .button,
+  .consultation-items-heading .button {
+    width: 100%;
   }
 }

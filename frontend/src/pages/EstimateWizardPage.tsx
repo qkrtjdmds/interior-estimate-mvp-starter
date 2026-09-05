@@ -1,7 +1,8 @@
-﻿import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { createEstimate, fetchCatalog, previewEstimate } from '../api/estimateApi'
-import type { CatalogCategory, CatalogItem, EstimatePreview } from '../api/types'
+import type { CatalogCategory, CatalogItem, CatalogOption, EstimatePreview } from '../api/types'
 import { getApiErrorMessage } from '../api/client'
 import ApiState from '../components/ApiState'
 import { EstimateDetailTable, EstimateTotals } from '../components/EstimateSummary'
@@ -46,6 +47,11 @@ function flattenItems(catalog: CatalogCategory[]): Array<{ category: CatalogCate
   return catalog.flatMap((category) => category.items.map((item) => ({ category, item })))
 }
 
+function optionIsDisabled(option: CatalogOption): boolean {
+  const optionState = option as CatalogOption & { active?: boolean; customer_visible?: boolean }
+  return optionState.active === false || optionState.customer_visible === false
+}
+
 function buildPreviewLikeEstimate(preview: EstimatePreview) {
   return {
     estimate_number: 'preview',
@@ -80,11 +86,13 @@ export default function EstimateWizardPage() {
   const isLast = stepIndex === STEPS.length - 1
   const {
     customer,
+    contactCompleted,
     project,
     selectedItemIds,
     setSelectedItemIds,
     selectedItems,
     setCustomer,
+    setContactCompleted,
     setProject,
     toggleSelectedItemId,
     addOrUpdateItem,
@@ -170,6 +178,7 @@ export default function EstimateWizardPage() {
   }, [debouncedItems])
 
   if (location.pathname === '/estimate') return <Navigate to="/estimate/contact" replace />
+  if (step.key !== 'contact' && !contactCompleted) return <Navigate to="/estimate/contact" replace />
 
   const catalogItems = flattenItems(catalog)
   const selectedCatalogItems = catalogItems.filter(({ item }) => selectedItemIds.includes(item.id))
@@ -181,6 +190,7 @@ export default function EstimateWizardPage() {
       setFormError(error)
       return
     }
+    if (step.key === 'contact') setContactCompleted(true)
     if (!isLast) navigate(STEPS[stepIndex + 1].path)
   }
 
@@ -275,7 +285,7 @@ export default function EstimateWizardPage() {
             <label>연락처<input value={customer.phone} maxLength={50} inputMode="tel" onChange={(event) => setCustomer({ phone: event.target.value })} placeholder="010-0000-0000" /></label>
             <label>이메일 <span>선택</span><input type="email" value={customer.email} onChange={(event) => setCustomer({ email: event.target.value })} placeholder="name@example.com" /></label>
             <label className="checkbox-label"><input type="checkbox" checked={customer.privacyAccepted} onChange={(event) => setCustomer({ privacyAccepted: event.target.checked })} /><span>견적 상담을 위한 개인정보 수집 및 이용에 동의합니다.</span></label>
-            <p className="small-note">이름, 연락처, 이메일은 새로고침 복구용 localStorage에 저장하지 않습니다.</p>
+            <p className="small-note">이름, 연락처, 이메일은 브라우저 저장소에 저장하지 않습니다.</p>
           </section>
         )}
 
@@ -323,15 +333,38 @@ export default function EstimateWizardPage() {
                   {item.options.map((option) => {
                     const selected = selectedItems.some((selectedItem) => selectedItem.option_id === option.id)
                     const selectedInput = selectedItems.find((selectedItem) => selectedItem.option_id === option.id)
+                    const disabled = optionIsDisabled(option)
+                    const selectOption = () => {
+                      if (disabled) return
+                      addOrUpdateItem({ option_id: option.id, quantity: selectedInput?.quantity ?? '1.00' })
+                    }
+                    const handleOptionKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+                      if (event.key !== 'Enter' && event.key !== ' ') return
+                      event.preventDefault()
+                      selectOption()
+                    }
                     return (
-                      <div className={selected ? 'option-card selected' : 'option-card'} key={option.id}>
-                        <button type="button" onClick={() => addOrUpdateItem({ option_id: option.id, quantity: selectedInput?.quantity ?? '1.00' })} aria-pressed={selected}>
-                          <span className="option-topline"><strong>{option.name}</strong>{option.recommended && <span className="badge">추천</span>}</span>
-                          {option.description && <span className="option-description">{option.description}</span>}
-                          <span className="option-price">{formatCurrency(option.default_price)} / {option.unit}</span>
-                        </button>
+                      <div
+                        className={`${selected ? 'option-card selected' : 'option-card'}${disabled ? ' disabled' : ''}`}
+                        key={option.id}
+                        role="button"
+                        tabIndex={disabled ? -1 : 0}
+                        aria-pressed={selected}
+                        aria-disabled={disabled || undefined}
+                        onClick={selectOption}
+                        onKeyDown={handleOptionKeyDown}
+                      >
+                        <span className="option-topline">
+                          <strong>{option.name}</strong>
+                          <span className="option-badges">
+                            {option.recommended && <span className="badge">추천</span>}
+                            {selected && <span className="option-selected-check" aria-hidden="true">✓</span>}
+                          </span>
+                        </span>
+                        {option.description && <span className="option-description">{option.description}</span>}
+                        <span className="option-price">{formatCurrency(option.default_price)} / {option.unit}</span>
                         {selected && (
-                          <div className="quantity-line">
+                          <div className="quantity-line" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                             <label>수량 또는 면적<input type="number" min="0.01" step="0.01" value={selectedInput?.quantity ?? '1.00'} onChange={(event) => updateQuantity(option.id, event.target.value)} /></label>
                             <span>{option.unit}</span>
                             <button className="text-button danger" type="button" onClick={() => removeItem(option.id)}>삭제</button>
